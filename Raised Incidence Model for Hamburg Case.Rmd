@@ -1,0 +1,115 @@
+---
+title: "Raised Incidence Model for Hamburg Case"
+author: "Sandra Rudeloff"
+date: "2023-01-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load Libraries
+
+```{r}
+library(spatstat)
+library(sf)
+```
+
+# Load Outbreak from Shapefile
+
+```{r}
+sf_outbreak <- st_read("./Data/Outbreak/Aldi_Outbreak.shp")
+```
+
+```{r}
+plot(st_geometry(sf_outbreak), pch = 19)
+```
+
+## Convert into spatstat ppp object
+
+```{r}
+ppp_outbreak <- as.ppp(X=sf_outbreak$geometry, W=owin(c(4303150,4342650), c(3365250,3403550)))
+ppp_outbreak
+```
+
+```{r}
+plot(ppp_outbreak, pch = 19)
+```
+
+# Load Population Data
+
+```{r}
+im_population <- readRDS("./Data/im_population.rds")
+```
+
+```{r}
+colors <- c("#ffffff", "#FEEDDE", "#FDBE85", "#FD8D3C", "#E6550D","#F01B00", "#A63603", "#732600")
+plot(im_population, main = "Kernel Smoothed Population Density Hamburg 2011", col =colors)
+contour(im_population, main = "Contour of Population Density Hamburg 2011")
+```
+
+# Load Potential Pattern
+
+```{r}
+sf_stores <- st_read("~/Dev Kram/Traceback_Model/Data/Potential Pattern/Aldi_store_6.shp")
+```
+
+```{r}
+plot(st_geometry(sf_stores), pch= 7)
+```
+
+```{r}
+ppp_stores <- as.ppp(X=sf_stores$geometry, W=owin(c(4303150,4342650), c(3365250,3403550)))
+ppp_stores
+```
+
+
+```{r}
+plot(ppp_stores, pch = 7)
+```
+
+```{r}
+ppp_stores$y[1]
+```
+
+# Fit Null Model
+
+```{r}
+ppm(ppp_outbreak ~ offset(log(im_population)))
+```
+
+```{r}
+ppm.ppp
+```
+
+# Fit Alternative Model
+
+We start by defining the squared distance to the , as this function will be re-used frequently
+
+```{r}
+d2incin <- function(x, y, xPOS=4316914, yPOS = 3385953) {
+  (x - xPOS)^2 + (y - yPOS)^2}
+```
+
+```{r}
+raisin <- function(x, y, alpha, beta) {
+  1 + alpha * exp(-beta * d2incin(x, y))
+}
+```
+
+
+
+```{r}
+fit1 <- ippm(ppp_outbreak ~ offset(log(im_population) + log(raisin)),
+  start = list(alpha = 5, beta = 1))
+)
+```
+
+[r - How to succinctly write a formula with many variables from a data frame? - Stack Overflow](https://stackoverflow.com/questions/5251507/how-to-succinctly-write-a-formula-with-many-variables-from-a-data-frame)
+
+```{r}
+update(f, . ~ .)
+```
+
+I thin we have to make a list of raisins

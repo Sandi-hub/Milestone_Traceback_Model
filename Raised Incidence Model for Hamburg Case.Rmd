@@ -4,7 +4,6 @@ geometry: "left=2cm,right=2cm,top=1cm,bottom=1cm"
 output:
   pdf_document: 
     number_sections: yes
-  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -105,6 +104,7 @@ fit0
 ```
 
 # Fit Alternative Model
+For one source:
 $H_0: \lambda_1(x) = \rho\lambda_0(x) (1+ \alpha \ e^{-\beta x'x})$
 
 We define the squared distance to the source:

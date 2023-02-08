@@ -1,55 +1,60 @@
 ---
 title: "Read Population Data"
-author: "Sandra Rudeloff"
-date: "2023-01-27"
-output: pdf_document
+geometry: "left=2cm,right=2cm,top=1cm,bottom=1cm"
+output:
+  pdf_document: 
+    number_sections: yes
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r include=FALSE}
+Sys.setenv(lang = "en_US")
+```
+
 # Read Data
 
-First, we read the population data downloaded from the website\
-Statistisches Amt für Hamburg und Schleswig-Holstein. (2015, July 14). *Interaktive Karte für Hamburg zum Zensus 2011*. <https://www.statistik-nord.de/fileadmin/maps/zensus2011_hh/index.html>. We skip the first two rows, because this is not data yet, but explanatory rows. We also get rid of the last two rows, since it's only indicating the source of the file and not data anymore
+We read the population data downloaded from Statistisches Amt für Hamburg und Schleswig-Holstein. (2015, July 14). Interaktive Karte für Hamburg zum Zensus 2011. <https://www.statistik-nord.de/fileadmin/maps/zensus2011_hh/index.html>. We skip the first two rows because this is not data yet, but explanatory rows. We also get rid of the last two rows, since they're only indicating the source of the file and are not part of the dataset.
+
+```{r message=FALSE}
+library(readxl)
+library(spatstat)
+```
 
 ```{r}
-library(readxl)
-y <- read_excel("./Data/Population Data/Zensus2011_Ergebnisse_nach_Gitterzellen_fuer_Hamburg.xlsx", sheet= "Einwohnerzahl 100m-Gitterzellen", skip =2, n_max=76038)
+population_data <- read_excel("./Data/Population Data/Zensus2011_Ergebnisse_nach_Gitterzellen_fuer_Hamburg.xlsx", sheet= "Einwohnerzahl 100m-Gitterzellen", skip =2, n_max=76038)
 ```
 
 ## Data Cleaning
 
-We remove all rows where the number of inhabitants is equal to -1 because it means that the cell is either uninhabited or the number of inhabitants has to be kept secret.
+We remove all rows where the number of inhabitants is equal to "-1" because it means that the cell is either uninhabited or the number of inhabitants has to be kept secret.
 
 ```{r}
-y <- y[y$Einwohner != "-1", ]
+population_data <- population_data[population_data$Einwohner != "-1", ]
 ```
 
 ## Data Output
 
-The x_mp_100m and y_mp_100m are the geographical longitude and latitude of the centroid of the cell.
+The attributes "x_mp_100m" and "y_mp_100m" are the geographical longitude and latitude of the centroid of the cell.
 
 ```{r}
-summary(y)
-class(y)
-head(y)
+head(population_data)
 ```
 
 # Transform Data
 
-Now, we have an object of the class `{r} class(y)`. To use it within spatstat, we first need to define the bounding window with the minimum and maximum x and y values. The values for the window object are taken from the full dataset also including the cell without inhabitants (maybe change?)
+Now, we have an object of the class `r class(population_data)`. To use it within spatstat, we first need to define the bounding window with the minimum and maximum x and y values. The values for the window object are taken from the full dataset also including the cell without inhabitants.
 
 ```{r}
-library(spatstat)
 window <- owin(c(4303150,4342650), c(3365250,3403550))
 ```
 
 Now, we can transform the data into a ppp-object (planar point pattern)
 
 ```{r}
-ppp_population <- ppp(x=y$x_mp_100m, y=y$y_mp_100m, window = window, marks= y$Einwohner )
+ppp_population <- ppp(x=population_data$x_mp_100m, y=population_data$y_mp_100m, window = window, marks= population_data$Einwohner )
 ```
 
 ```{r}
@@ -57,36 +62,34 @@ plot(ppp_population)
 ```
 
 ```{r}
-head(ppp_population)
 summary(ppp_population)
 ```
 
 # Smooth Data
 
 ```{r}
-smo_population <- density(ppp_population, sigma = 15, positive = TRUE,  eps = 10, weights= marks(ppp_population)) 
-```
-
-```{r}
-plot(smo_population)
-class(smo_population)
-smo_population
+smo_population <- density(ppp_population, sigma = 150, positive = TRUE,  eps = 100, weights= marks(ppp_population)) 
 ```
 
 For further explanation of the density function see: [density.ppp function - RDocumentation](https://www.rdocumentation.org/packages/spatstat/versions/1.64-1/topics/density.ppp)
 
--   `Sigma`: Standard deviation of isotropic smoothing kernel. Either a numerical value, or a function that computes an appropriate value of sigma.
+-   `Sigma`: smoothing bandwidth
+
+    -   Standard deviation of isotropic smoothing kernel. Either a numerical value, or a function that computes an appropriate value of sigma.
+
+    -   this is just an informed pick for the bandwidth, there are techniques for automatic bandwidth selection that we could use.
+
+-   `eps`: The pixels are eps=100 wide
 
 -   `weights`: Optional weights to be attached to the points. A numeric vector, numeric matrix, an expression, or a pixel image.
 
-In contrast to the approach in the book Baddeley, A., Rubak, E., & Turner, R. (2016). Spatial Point Patterns Methodology and Applications with R. Chapman & Hall/CRC. I deleted the argument `eps`. With the argument a lot of internal memory usage was preventing the execution of the code.
+```{r}
+plot(smo_population)
+smo_population
+```
 
 ## Save the data
 
 ```{r}
-saveRDS(smo_population,"./Population Data Hamburg from Census 2011/im_population.rds")
-```
-
-```{r}
-smo_population
+saveRDS(smo_population,"./Data/Population Data/im_population.rds")
 ```

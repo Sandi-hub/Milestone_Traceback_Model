@@ -9,7 +9,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-\vspace{-5truemm}
+
 ```{r include=FALSE}
 Sys.setenv(lang = "en_US")
 ```
@@ -36,6 +36,7 @@ library(sf)
 ```{r}
 sf_outbreak <- st_read("./Data/Outbreak/Aldi_Outbreak.shp")
 ```
+
 ```{r eval=FALSE, include=FALSE}
 plot(st_geometry(sf_outbreak), pch = 19, main = "Artificial Outbreak")
 ```
@@ -46,7 +47,9 @@ plot(st_geometry(sf_outbreak), pch = 19, main = "Artificial Outbreak")
 ppp_outbreak <- as.ppp(X=sf_outbreak$geometry, W=owin(c(4303150,4342650), c(3365250,3403550)))
 ppp_outbreak
 ```
+
 **Plot**
+
 ```{r}
 plot(ppp_outbreak, pch = 19,  main = "Artificial Outbreak")
 ```
@@ -58,7 +61,9 @@ We applied kernel smoothing (Diggle, 1985) to the population data to obtain an u
 ```{r}
 im_population <- readRDS("./Data/Population Data/im_population.rds")
 ```
+
 **Plot**
+
 ```{r}
 colors <- c("#ffffff", "#FEEDDE", "#FDBE85", "#FD8D3C", "#E6550D","#F01B00", "#A63603", "#732600")
 plot(im_population, main = "Kernel Smoothed Population Density Hamburg 2011", col =colors)
@@ -72,15 +77,20 @@ For now, we only use the one point source model, so we read only the Shapefile o
 ```{r}
 sf_stores <- st_read("./Data/Potential Pattern/Aldi_store_6.shp")
 ```
+
 ```{r eval=FALSE, include=FALSE}
 plot(st_geometry(sf_stores), pch= 7, main = "Source")
 ```
+
 **Convert into spatstat ppp object**
+
 ```{r}
 ppp_stores <- as.ppp(X=sf_stores$geometry, W=owin(c(4303150,4342650), c(3365250,3403550)))
 ppp_stores
 ```
+
 **Plot**
+
 ```{r}
 plot(ppp_stores, pch = 7, main = "Source")
 ```
@@ -104,24 +114,26 @@ fit0
 ```
 
 # Fit Alternative Model
-For one source:
-$H_0: \lambda_1(x) = \rho\lambda_0(x) (1+ \alpha \ e^{-\beta x'x})$
+
+For one source: $H_0: \lambda_1(x) = \rho\lambda_0(x) (1+ \alpha \ e^{-\beta x'x})$
 
 We define the squared distance to the source:
+
 ```{r}
 d2source <- function(x, y, xPOS=ppp_stores$x[1], yPOS = ppp_stores$y[1]) {
   (x - xPOS)^2 + (y - yPOS)^2}
 ```
 
 We define the functional form of the raised incidence part:
+
 ```{r}
 raisin <- function(x, y, alpha, beta) {
   1 + alpha * exp(-beta * d2source(x, y))
 }
 ```
 
-
 We fit the model to our outbreak
+
 ```{r}
 fit1 <- ippm(ppp_outbreak ~ offset(log(im_population) + log(raisin)),
   start = list(alpha = 5, beta = 1))
@@ -132,6 +144,7 @@ fit1
 ```
 
 ## Statistical Inference comparing the two models
+
 ```{r}
 anova(fit0, fit1, test="LRT")
 ```

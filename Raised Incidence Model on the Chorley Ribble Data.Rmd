@@ -109,7 +109,7 @@ smo <- eval.im(pmax(smo, 1e-10))
     several images, and returns a new image. It is used to avoid
     numerical instability (*p. 320*).
 
-```{plot(smo)}
+``` {plot(smo)}
 contour(smo) # contour plot 
 ```
 

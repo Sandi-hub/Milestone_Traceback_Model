@@ -1,0 +1,92 @@
+---
+title: "Read Population Data"
+author: "Sandra Rudeloff"
+date: "2023-01-27"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Read Data
+
+First, we read the population data downloaded from the website\
+Statistisches Amt für Hamburg und Schleswig-Holstein. (2015, July 14). *Interaktive Karte für Hamburg zum Zensus 2011*. <https://www.statistik-nord.de/fileadmin/maps/zensus2011_hh/index.html>. We skip the first two rows, because this is not data yet, but explanatory rows. We also get rid of the last two rows, since it's only indicating the source of the file and not data anymore
+
+```{r}
+library(readxl)
+y <- read_excel("./Data/Population Data/Zensus2011_Ergebnisse_nach_Gitterzellen_fuer_Hamburg.xlsx", sheet= "Einwohnerzahl 100m-Gitterzellen", skip =2, n_max=76038)
+```
+
+## Data Cleaning
+
+We remove all rows where the number of inhabitants is equal to -1 because it means that the cell is either uninhabited or the number of inhabitants has to be kept secret.
+
+```{r}
+y <- y[y$Einwohner != "-1", ]
+```
+
+## Data Output
+
+The x_mp_100m and y_mp_100m are the geographical longitude and latitude of the centroid of the cell.
+
+```{r}
+summary(y)
+class(y)
+head(y)
+```
+
+# Transform Data
+
+Now, we have an object of the class `{r} class(y)`. To use it within spatstat, we first need to define the bounding window with the minimum and maximum x and y values. The values for the window object are taken from the full dataset also including the cell without inhabitants (maybe change?)
+
+```{r}
+library(spatstat)
+window <- owin(c(4303150,4342650), c(3365250,3403550))
+```
+
+Now, we can transform the data into a ppp-object (planar point pattern)
+
+```{r}
+ppp_population <- ppp(x=y$x_mp_100m, y=y$y_mp_100m, window = window, marks= y$Einwohner )
+```
+
+```{r}
+plot(ppp_population)
+```
+
+```{r}
+head(ppp_population)
+summary(ppp_population)
+```
+
+# Smooth Data
+
+```{r}
+smo_population <- density(ppp_population, sigma = 15, positive = TRUE,  eps = 10, weights= marks(ppp_population)) 
+```
+
+```{r}
+plot(smo_population)
+class(smo_population)
+smo_population
+```
+
+For further explanation of the density function see: [density.ppp function - RDocumentation](https://www.rdocumentation.org/packages/spatstat/versions/1.64-1/topics/density.ppp)
+
+-   `Sigma`: Standard deviation of isotropic smoothing kernel. Either a numerical value, or a function that computes an appropriate value of sigma.
+
+-   `weights`: Optional weights to be attached to the points. A numeric vector, numeric matrix, an expression, or a pixel image.
+
+In contrast to the approach in the book Baddeley, A., Rubak, E., & Turner, R. (2016). Spatial Point Patterns Methodology and Applications with R. Chapman & Hall/CRC. I deleted the argument `eps`. With the argument a lot of internal memory usage was preventing the execution of the code.
+
+## Save the data
+
+```{r}
+saveRDS(smo_population,"./Population Data Hamburg from Census 2011/im_population.rds")
+```
+
+```{r}
+smo_population
+```

@@ -56,7 +56,7 @@ plot(ppp_outbreak, pch = 19,  main = "Artificial Outbreak")
 We applied kernel smoothing (Diggle, 1985) to the population data to obtain an unnormalised estimate of the spatially varying population density of susceptibles ($\lambda_0(x)$).
 
 ```{r}
-im_population <- readRDS("./Data/im_population.rds")
+im_population <- readRDS("./Data/Population Data/im_population.rds")
 ```
 **Plot**
 ```{r}

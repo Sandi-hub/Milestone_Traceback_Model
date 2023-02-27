@@ -14,15 +14,16 @@ knitr::opts_chunk$set(echo = TRUE)
 Sys.setenv(lang = "en_US")
 ```
 
-# Read Data
-
-We read the population data downloaded from Statistisches Amt für Hamburg und Schleswig-Holstein. (2015, July 14). Interaktive Karte für Hamburg zum Zensus 2011. <https://www.statistik-nord.de/fileadmin/maps/zensus2011_hh/index.html>. We skip the first two rows because this is not data yet, but explanatory rows. We also get rid of the last two rows, since they're only indicating the source of the file and are not part of the dataset.
-
 ```{r message=FALSE}
 library(readxl)
 library(spatstat)
 ```
 
+# Read Data
+
+We read the population data downloaded from [Statistisches Amt für Hamburg und Schleswig-Holstein. (2015, July 14). Interaktive Karte für Hamburg zum Zensus 2011](<https://www.statistik-nord.de/fileadmin/maps/zensus2011_hh/index.html>). 
+
+We skip the first two rows because this is not data yet, but explanatory rows. We also get rid of the last two rows, since they're only indicating the source of the file and are not part of the dataset.
 ```{r}
 population_data <- read_excel("./Data/Population Data/Zensus2011_Ergebnisse_nach_Gitterzellen_fuer_Hamburg.xlsx", sheet= "Einwohnerzahl 100m-Gitterzellen", skip =2, n_max=76038)
 ```
@@ -34,6 +35,7 @@ We remove all rows where the number of inhabitants is equal to "-1" because it m
 ```{r}
 population_data <- population_data[population_data$Einwohner != "-1", ]
 ```
+This reduces the data from 76,038 to 29,094 cells.
 
 ## Data Output
 
@@ -43,18 +45,32 @@ The attributes "x_mp_100m" and "y_mp_100m" are the geographical longitude and la
 head(population_data)
 ```
 
+Divide the centroid values by 1.000 to convert from  meters to kilometers because the coordinate system ETRS89-LAEA Europe - EPSG:3035 is used.
+
+```{r}
+population_data$x_mp_100m = population_data$x_mp_100m / 1000
+population_data$y_mp_100m = population_data$y_mp_100m / 1000
+```
+
+```{r}
+colnames(population_data)[colnames(population_data) == "x_mp_100m"] ="x_mp_km"
+colnames(population_data)[colnames(population_data) == "y_mp_100m"] ="y_mp_km"
+```
+
+
 # Transform Data
 
 Now, we have an object of the class `r class(population_data)`. To use it within spatstat, we first need to define the bounding window with the minimum and maximum x and y values. The values for the window object are taken from the full dataset also including the cell without inhabitants.
 
 ```{r}
-window <- owin(c(4303150,4342650), c(3365250,3403550))
+window <- owin(c(4303.150,4342.650), c(3365.250,3403.550))
+window$units <- c("km","km")
 ```
 
 Now, we can transform the data into a ppp-object (planar point pattern)
 
 ```{r}
-ppp_population <- ppp(x=population_data$x_mp_100m, y=population_data$y_mp_100m, window = window, marks= population_data$Einwohner )
+ppp_population <- ppp(x=population_data$x_mp_km, y=population_data$y_mp_km, window = window, marks= population_data$Einwohner)
 ```
 
 ```{r}
@@ -65,10 +81,12 @@ plot(ppp_population)
 summary(ppp_population)
 ```
 
+
+
 # Smooth Data
 
 ```{r}
-smo_population <- density(ppp_population, sigma = 150, positive = TRUE,  eps = 100, weights= marks(ppp_population)) 
+smo_population <- density(ppp_population, sigma = 0.15, eps = 0.1, positive = TRUE, weights= marks(ppp_population)) 
 ```
 
 For further explanation of the density function see: [density.ppp function - RDocumentation](https://www.rdocumentation.org/packages/spatstat/versions/1.64-1/topics/density.ppp)
@@ -79,7 +97,7 @@ For further explanation of the density function see: [density.ppp function - RDo
 
     -   this is just an informed pick for the bandwidth, there are techniques for automatic bandwidth selection that we could use.
 
--   `eps`: The pixels are eps=100 wide
+-   `eps`: The pixels are eps=0.1km wide
 
 -   `weights`: Optional weights to be attached to the points. A numeric vector, numeric matrix, an expression, or a pixel image.
 

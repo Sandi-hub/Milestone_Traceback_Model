@@ -77,7 +77,7 @@ smo <- eval.im(pmax(smo, 1e-10))
 
 -   `eval.im:` performs pixel-by-pixel calculations on an image, or on several images, and returns a new image. It is used to avoid numerical instability (*p. 320*).
 
-``` {plot(smo)}
+```{r}
 contour(smo) # contour plot 
 ```
 
@@ -89,7 +89,7 @@ When fitting the model, we want to find the parameter $\kappa$:
 
 ```{r}
 # Finding rho
-ppm(larynx ~ offset(log(smo)))
+ppm(larynx ~ offset(log(smo)), gcontrol = glm.control(maxit = 10000))
 ```
 
 **Why using offset**
@@ -142,7 +142,7 @@ raisin <- function(x, y, alpha, beta) {
 
 ```{r}
 chorleyDfit <- ippm(Q ~ offset(log(smo) + log(raisin)),
-  start = list(alpha = 5, beta = 1)
+  start = list(alpha = 5, beta = 1), gcontrol = glm.control(maxit = 10000)
 )
 ```
 

@@ -22,7 +22,7 @@ This script implements the raised incidence model by Diggle (1990) and the exten
 
 -   Outbreak case locations as outbreak [$\lambda_1(x)$]
 
-All spatial data is stored in the coordinate system ETRS89-LAEA Europe - EPSG:3035.
+All spatial data was initially stored in the coordinate system ETRS89-LAEA Europe - EPSG:3035 and transformed from metres to kilometres.
 
 # Load Libraries
 
@@ -34,8 +34,9 @@ library(sf)
 # Load Outbreak from Shapefile
 
 ```{r}
-sf_outbreak <- st_read("./Data/Outbreak/Aldi_Outbreak.shp")
+sf_outbreak <- st_read("./Data/Outbreaks/Aldi_20/Aldi_Outbreak.shp")
 ```
+
 
 ```{r eval=FALSE, include=FALSE}
 plot(st_geometry(sf_outbreak), pch = 19, main = "Artificial Outbreak")
@@ -47,7 +48,11 @@ plot(st_geometry(sf_outbreak), pch = 19, main = "Artificial Outbreak")
 ppp_outbreak <- as.ppp(X=sf_outbreak$geometry, W=owin(c(4303150,4342650), c(3365250,3403550)))
 ppp_outbreak
 ```
+```{r}
+ppp_outbreak <- rescale(ppp_outbreak, 1000, "km")
+```
 
+  
 **Plot**
 
 ```{r}
@@ -88,6 +93,9 @@ plot(st_geometry(sf_stores), pch= 7, main = "Source")
 ppp_stores <- as.ppp(X=sf_stores$geometry, W=owin(c(4303150,4342650), c(3365250,3403550)))
 ppp_stores
 ```
+```{r}
+ppp_stores <- rescale(ppp_stores, 1000, "km")
+```
 
 **Plot**
 
@@ -98,7 +106,6 @@ plot(ppp_stores, pch = 7, main = "Source")
 ```{r}
 print(ppp_stores$x[1])
 print(ppp_stores$y[1])
-
 ```
 
 # Fit Null Model
@@ -106,7 +113,7 @@ print(ppp_stores$y[1])
 $H_0: \lambda_1(x) = \rho \lambda_0(x)$
 
 ```{r}
-fit0 <- ppm(ppp_outbreak ~ offset(log(im_population)))
+fit0 <- ppm(ppp_outbreak ~ offset(log(im_population)), gcontrol = glm.control(maxit = 10000))
 ```
 
 ```{r}
@@ -120,7 +127,7 @@ For one source: $H_0: \lambda_1(x) = \rho\lambda_0(x) (1+ \alpha \ e^{-\beta x'x
 We define the squared distance to the source:
 
 ```{r}
-d2source <- function(x, y, xPOS=ppp_stores$x[1], yPOS = ppp_stores$y[1]) {
+d2source <- function(x, y, xPOS= 4316.914, yPOS=3385.953) {
   (x - xPOS)^2 + (y - yPOS)^2}
 ```
 
@@ -134,17 +141,70 @@ raisin <- function(x, y, alpha, beta) {
 
 We fit the model to our outbreak
 
+
+
 ```{r}
 fit1 <- ippm(ppp_outbreak ~ offset(log(im_population) + log(raisin)),
-  start = list(alpha = 5, beta = 1))
+  start = list(alpha = 5, beta = 1), gcontrol = glm.control(maxit = 1000))
 ```
+
 
 ```{r}
 fit1
 ```
 
+
+
+
 ## Statistical Inference comparing the two models
 
 ```{r}
 anova(fit0, fit1, test="LRT")
+```
+
+# Quadscheme
+```{r}
+Q <- quadscheme(ppp_outbreak, eps = 100)
+```
+
+```{r}
+fit0_test <- ppm(Q ~ offset(log(im_population)), gcontrol = glm.control(maxit = 10000))
+fit0_test
+```
+
+```{r}
+fit1_test <- ippm(Q ~ offset(log(im_population) + log(raisin)),
+  start = list(alpha = 5, beta = 1), gcontrol = glm.control(maxit = 1000))
+fit1_test
+```
+
+# Multiple Sources
+```{r}
+all_raisins = list()
+for (i in 1:3){#length(ppp_stores)  {
+    all_raisins[i] =  paste0("(1 + alpha * exp(-beta * ((x- ",ppp_stores$x[i],")^2 + (y- ",ppp_stores$y[i],")^2)))")
+}
+
+raisin_func <- function(x, y, alpha, beta) {
+  paste(all_raisins, collapse = "*")
+}
+
+
+
+```
+
+
+
+
+```{r}
+d2source <- function(x, y, xPOS, yPOS) {
+  (x - xPOS)^2 + (y - yPOS)^2}
+```
+
+We define the functional form of the raised incidence part:
+
+```{r}
+raisin <- function(x, y, alpha, beta) {
+  1 + alpha * exp(-beta * d2source(x, y))
+}
 ```

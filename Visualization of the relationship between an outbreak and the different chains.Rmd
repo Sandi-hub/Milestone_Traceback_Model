@@ -1,0 +1,145 @@
+---
+title: "Visualization of the relationship between an outbreak and the different chains"
+author: "Sandra Rudeloff"
+date: "2023-02-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE}
+library(spatstat)
+library(raster)
+```
+
+# Read shops data and transform into ppp-object
+
+Multitype Point Pattern Object `shops_data`representing the store locations, with marks that represent the brand or chain to which each store belongs
+
+```{r}
+shops_data <- shapefile("./Data/All_Shops/All_Shops.shp")
+```
+
+```{r}
+ppp_shops_data <- ppp(x=shops_data@coords[,1],  y=shops_data@coords[,2],marks=as.factor(shops_data@data$Chain),window=owin(c(4303150,4342650), c(3365250,3403550)))
+ppp_shops_data
+```
+
+```{r}
+plot(ppp_shops_data)
+```
+
+# Read outbreak data and transform into ppp-object
+
+```{r}
+sf_outbreak <- st_read("./Data/Outbreaks/Aldi_20/Aldi_outbreak.shp")
+ppp_outbreak <- as.ppp(X=sf_outbreak$geometry, W=owin(c(4303150,4342650), c(3365250,3403550)))
+plot(ppp_outbreak)
+```
+
+# Using the nearest neighbor distance as a covariate
+
+## Aldi
+
+```{r}
+f_Aldi <- distfun(subset(shops_data_ppp, marks == "Aldi", drop = TRUE))
+V_Aldi <- rhohat(ppp_outbreak, f_Aldi)
+plot(V_Aldi, xlim=c(0,8000))
+```
+
+## Edeka
+
+```{r}
+f_Edeka <- distfun(subset(shops_data_ppp, marks == "Edeka", drop = TRUE))
+V_Edeka <- rhohat(ppp_outbreak, f_Edeka)
+plot(V_Edeka, xlim=c(0,8000))
+```
+
+f: you need to input another point pattern and for each point in this second point pattern it will give you the distance to the nearest neighbour in the first defined point pattern. In this case if we hand over an outbreak of 20 cases to the distfun defined on the Edeka point pattern, it returns 20 numerical values representing the distance between each outbreak case and its nearest Edeka store.
+
+## Rewe
+
+```{r}
+f_Rewe <- distfun(subset(shops_data_ppp, marks == "Rewe", drop = TRUE))
+V_Rewe <- rhohat(ppp_outbreak, f_Rewe)
+plot(V_Rewe, xlim=c(0,8000))
+```
+
+## Lidl
+
+```{r}
+f_Lidl <- distfun(subset(shops_data_ppp, marks == "Lidl", drop = TRUE))
+V_Lidl <- rhohat(ppp_outbreak, f_Lidl)
+plot(V_Lidl, xlim=c(0,8000))
+```
+
+## Netto
+
+```{r}
+f_Netto <- distfun(subset(shops_data_ppp, marks == "Netto", drop = TRUE))
+V_Netto <- rhohat(ppp_outbreak, f_Netto)
+plot(V_Netto, xlim=c(0,8000))
+```
+
+## Penny
+
+```{r}
+f_Penny <- distfun(subset(shops_data_ppp, marks == "Penny", drop = TRUE))
+V_Penny <- rhohat(ppp_outbreak, f_Penny)
+plot(V_Penny, xlim=c(0,8000))
+```
+
+# Using the relative risk of each chain as a covariate
+
+Relative risk predicted by model
+
+```{r}
+Z <- relrisk(ppp_shops_data, casecontrol = FALSE)
+plot(Z)
+```
+
+Basic and Bio Company only have one store each. Alnatura and Denns have 4 each.
+
+## Aldi
+
+```{r}
+V_Aldi <- rhohat(ppp_outbreak, Z$Aldi)
+plot(V_Aldi)
+```
+
+## Edeka
+
+```{r}
+V_Edeka <- rhohat(ppp_outbreak, Z$Edeka)
+plot(V_Edeka)
+```
+
+## Rewe
+
+```{r}
+V_Rewe <- rhohat(ppp_outbreak, Z$Rewe)
+plot(V_Rewe)
+```
+
+## Lidl
+
+```{r}
+V_Lidl <- rhohat(ppp_outbreak, Z$Lidl)
+plot(V_Lidl)
+```
+
+## Netto
+
+```{r}
+V_Netto <- rhohat(ppp_outbreak, Z$Netto)
+plot(V_Netto)
+```
+
+## Penny
+
+```{r}
+V_Penny <- rhohat(ppp_outbreak, Z$Penny)
+plot(V_Penny)
+```
